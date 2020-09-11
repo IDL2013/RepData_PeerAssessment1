@@ -1,0 +1,174 @@
+---
+title: "Peer assignment 1"
+author: "Iain Leslie"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(chron)
+```
+
+Created on `r Sys.Date()`
+
+## Reproducible research: Week 2 assignment
+
+This R Markdown document explores personal activity monitoring data collected by users of wearables such as Fitbit, Fuelband and Jawbone Up.  
+
+It aims to conduct a number of exploratory analyses, such as evaluating summary statistics and conducting time series analyses, and report these in a reproducible way. 
+
+### Loading and preprocessing the data
+
+The following code downloads the zip file to the working directory and extracts into csv format.
+
+```{r, echo=TRUE}
+###this will need updated for the repository
+setwd("/Users/iainleslie/JH_Datascience/Reproducible_research1")
+Od<-read.csv("/Users/iainleslie/JH_Datascience/Reproducible_research1/activity.csv")
+head(Od)
+```
+
+### Step 1: What is the mean number of steps perday?
+
+The following code calculates the total number of steps per day
+
+```{r, echo=TRUE}
+Od_spd <- aggregate(Od$steps,by=list(Category=Od$date),FUN=sum)
+Od_spd$Category <- as.Date(Od_spd$Category)
+colnames(Od_spd)[2] <- "Steps"
+summary(Od_spd)
+```
+
+A histogram of the total steps per diem is shown below:
+
+```{r,echo=TRUE}
+ggplot(Od_spd,aes(x=Steps)) + geom_histogram(color="blue",fill="purple",binwidth = 2500)
+
+```
+
+
+
+```{r, echo=TRUE}
+mean <- mean(Od_spd$Steps,na.rm = TRUE)
+median <- median(Od_spd$Steps,na.rm=TRUE)
+```
+The mean number of steps per day (after removing null values) is `r mean`.
+
+The median number of steps per day (after removing null values) is `r median`.
+
+### Step 2: What the is average daily activity pattern?
+
+A time series plot of average steps taken by 5 minute intervals is shown below:
+
+```{r, echo=TRUE}
+Od_5mi <- aggregate(Od$steps,by=list(Category=Od$interval),FUN=mean,na.rm=TRUE)
+colnames(Od_5mi)[1] <- "Intervals"
+colnames(Od_5mi)[2] <- "Steps"
+head(Od_5mi)
+
+ggplot(Od_5mi,aes(x=Intervals,y=Steps)) + geom_line(color="steelblue") + xlab("5 minute intervals") + ylab("Average steps per interval")
+
+```
+
+The interval with the highest average number of steps is found as follows:
+
+```{r,echo=TRUE}
+maxint <- Od_5mi$Intervals[which.max(Od_5mi$Steps)]
+
+```
+The interval with the highest number of steps is `r maxint`.
+
+### Step 3: Imputing missing values
+
+1. The number of missing values in the dataset is derived below:
+
+```{r, echo=TRUE}
+Od_NA<-sum(is.na(Od$steps))
+Od_NA
+
+```
+
+The original dataset contains `r Od_NA` missing values.
+
+2&3. Missing values are imputted with the mean value per day divided by the number of intervals (`r mean/(24*60/5)`), as it was calculated previously. This is not the most precise method, but doesn't seem to be the focus of the assignment. 
+The updated data are saved in a new dataset, nd.
+```{r, echo=TRUE}
+
+nd <- Od %>%
+        mutate(steps = ifelse(is.na(steps),mean/(24*60/5),steps))
+
+head(nd)
+
+```
+
+4. The below histogram shows the total steps per day
+
+```{r, echo=TRUE}
+nd_spd <- aggregate(nd$steps,by=list(Category=nd$date),FUN=sum)
+nd_spd$Category <- as.Date(nd_spd$Category)
+colnames(nd_spd)[2] <- "Steps"
+summary(nd_spd)
+
+ggplot(nd_spd,aes(x=Steps)) + geom_histogram(color="green",fill="red",binwidth = 2500)
+
+mean_new <- mean(nd_spd$Steps,na.rm = TRUE)
+median_new <- median(nd_spd$Steps,na.rm=TRUE)
+```
+
+The mean and median number of steps per day were `r mean_new` and `r median_new`, respectively. 
+
+The estimates are broadly comparable, as the na.rm function removed missing values in the first version. However, the median and mean are more closely aligned, suggesting the new data are closer to a normal distribution than the original dataset.
+
+### Step 4: How  do weekday and weekend patterns differ?
+
+The following step creates a new column in nd, which states whether the corresponding date was a weekend or weekday:
+
+```{r echo=TRUE}
+#Create new variable stating the day of the week
+nd$date <- as.Date(nd$date)
+nd$weekend = chron::is.weekend(nd$date)
+head(nd)
+        
+```
+
+The next steps create two separate time series plots for the average steps at weekends and weekdays.
+
+```{r echo=TRUE}
+average_weekdays <- nd %>%
+        group_by(weekend,interval) %>% 
+                summarise(mean_steps=mean(steps))
+head(average_weekdays)
+
+ggplot(average_weekdays,aes(x=interval,y=mean_steps,color=weekend)) + geom_line(position="dodge") + theme(legend.position="top") + facet_grid(weekend ~ .)
+
+
+```
+
+## Conclusions
+
+The information above suggests that people generally start moving earlier in the day on weekdays, but are potentially more average at weekends.
+
+
+Thank you for peer-reviewing my report, I appreciate it.
+
+
+
+
+
+
+
+
+### Plagiarism detector
+Just a couple of checks in case my code was copied...
+
+Original version of the final report was generated on 11th September 2020. Does this match the date listed below?
+
+```{r,echo=FALSE}
+Sys.Date()
+```
+
+The original version of the final report was uploaded to git user IDL2013. Does this match the repository for this current version?
+
+If the answers to the above are 'no', please review the original repository and report plagiarism if it is likely.
